@@ -135,6 +135,21 @@ class AddressableFlickerEffect : public AddressableLightEffect {
   uint8_t intensity_{13};
 };
 
+class AddressableScriptEffect : public AddressableLightEffect {
+ public:
+  explicit AddressableScriptEffect(const std::string &name);
+  void start() override;
+  void apply(AddressableLight &pixels, const ESPColor &current_color) override;
+  void set_frame_interval(uint32_t frame_interval);
+  void set_script_file(char* filename);
+ protected:
+  bool read_next_frame_(byte frame[][3], int32_t num_pixels);
+  char script_file_[16];
+  uint32_t frame_interval_{100};
+  uint32_t last_frame_time_{0};
+  uint32_t cursor_{0};
+};
+
 } // namespace light
 
 ESPHOMELIB_NAMESPACE_END

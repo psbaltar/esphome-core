@@ -3,6 +3,7 @@
 #ifdef USE_LIGHT
 
 #include "esphomelib/light/addressable_light_effect.h"
+#include <SD.h>
 
 ESPHOMELIB_NAMESPACE_BEGIN
 
@@ -358,6 +359,87 @@ void AddressableFlickerEffect::set_update_interval(uint32_t update_interval) {
 
 void AddressableFlickerEffect::set_intensity(float intensity) {
   this->intensity_ = roundf(intensity * 255.0f);
+}
+
+AddressableScriptEffect::AddressableScriptEffect(const std::string &name)
+    : AddressableLightEffect(name) {
+}
+
+void AddressableScriptEffect::start() {
+  SD.begin();
+}
+
+void AddressableScriptEffect::apply(AddressableLight &pixels, const ESPColor &current_color) {
+  const uint32_t now = millis();
+  int32_t num_pixels = pixels.size();
+
+  if (now - this->last_frame_time_ >= this->frame_interval_) { //if need to update
+    this->last_frame_time_ = now;
+
+    uint8_t frame[num_pixels][3];
+    if(read_next_frame_(frame, num_pixels)) {
+
+      for(int32_t pixel = 0; pixel < num_pixels; pixel++) {
+        uint8_t subpix[3];
+      
+        for(uint8_t i = 0; i<3; i++) {
+          subpix[i] = frame[pixel][i];
+        }
+
+        pixels[pixel] = ESPColor(subpix[0], subpix[1], subpix[2]);      
+  
+      }
+    }
+/*
+    else {
+      //some sort of error message
+    }
+*/
+  }
+
+}
+
+void AddressableScriptEffect::set_frame_interval(uint32_t frame_interval) {
+  this->frame_interval_ = frame_interval;
+}
+
+void AddressableScriptEffect::set_script_file(char* filename) {
+  strcpy(this->script_file_, filename);
+}
+
+bool AddressableScriptEffect::read_next_frame_(uint8_t frame[][3], int32_t num_pixels) {
+  char buf[8];
+  bool exist = SD.exists(this->script_file_);
+
+  if (exist) {
+    File f = SD.open(this->script_file_, FILE_READ);
+    f.seek(this->cursor_);
+
+
+    for(int32_t pixel = 0; pixel < num_pixels; pixel++){
+      for(uint8_t subpix = 0; subpix < 3; subpix++){
+        f.readBytes(buf, 2);
+        frame[pixel][subpix] = (uint8_t) strtol(buf, NULL, 16);
+      }
+
+      //TODO - handle DOS newlines
+      f.readBytes(buf, 1); //chomp delimiters
+    }
+
+    if(f.position() < f.size()) { // if not at end of file
+      this->cursor_ = f.position(); // update cursor
+    }
+    else {
+      this->cursor_ = 0; // go back to beginning at end of file
+    }
+    
+    f.close();
+    return 1;
+  }
+  else { // script_file_ doesn't exist
+    // TODO - add error message
+    return 0;
+  }
 }
 
 } // namespace light

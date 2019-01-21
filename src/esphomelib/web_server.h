@@ -9,6 +9,10 @@
 #include "esphomelib/controller.h"
 
 #include <vector>
+
+// FS_NO_GLOBALS allows ESPAsyncWebServer to coexist with Arduino SD library
+// https://github.com/me-no-dev/ESPAsyncWebServer/pull/112
+#define FS_NO_GLOBALS
 #include <ESPAsyncWebServer.h>
 
 ESPHOMELIB_NAMESPACE_BEGIN

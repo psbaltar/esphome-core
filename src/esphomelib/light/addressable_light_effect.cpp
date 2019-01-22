@@ -376,18 +376,11 @@ void AddressableScriptEffect::apply(AddressableLight &pixels, const ESPColor &cu
   if (now - this->last_frame_time_ >= this->frame_interval_) { //if need to update
     this->last_frame_time_ = now;
 
-    uint8_t frame[num_pixels][3];
+    uint32_t frame[num_pixels];
     if(read_next_frame_(frame, num_pixels)) {
 
       for(int32_t pixel = 0; pixel < num_pixels; pixel++) {
-        uint8_t subpix[3];
-      
-        for(uint8_t i = 0; i<3; i++) {
-          subpix[i] = frame[pixel][i];
-        }
-
-        pixels[pixel] = ESPColor(subpix[0], subpix[1], subpix[2]);      
-  
+        pixels[pixel] = ESPColor(frame[pixel]);
       }
     }
 /*
@@ -407,30 +400,31 @@ void AddressableScriptEffect::set_script_file(char* filename) {
   strcpy(this->script_file_, filename);
 }
 
-bool AddressableScriptEffect::read_next_frame_(uint8_t frame[][3], int32_t num_pixels) {
-  char buf[8];
+bool AddressableScriptEffect::read_next_frame_(uint32_t frame[], int32_t num_pixels) {
+  //buffer is 8 characters with delimiter (per pixel) + NULL + a little extra
+  int32_t buffer_size = (9*num_pixels)+5;
+  char buf[buffer_size];
+  char *bufptr;
+
   bool exist = SD.exists(this->script_file_);
 
   if (exist) {
     File f = SD.open(this->script_file_, FILE_READ);
     f.seek(this->cursor_);
 
+    uint32_t bytes_read = f.readBytesUntil('\n', buf, buffer_size-1);
+    buf[bytes_read] = '\0'; //readBytesUntil() isn't null terminated
+    bufptr = buf;
 
-    for(int32_t pixel = 0; pixel < num_pixels; pixel++){
-      for(uint8_t subpix = 0; subpix < 3; subpix++){
-        f.readBytes(buf, 2);
-        frame[pixel][subpix] = (uint8_t) strtol(buf, NULL, 16);
-      }
-
-      //TODO - handle DOS newlines
-      f.readBytes(buf, 1); //chomp delimiters
+    for(int32_t pixel = 0; pixel < num_pixels; pixel++) {
+      frame[pixel] = (uint32_t) strtoul(bufptr, &bufptr, 16);
     }
 
     if(f.position() < f.size()) { // if not at end of file
       this->cursor_ = f.position(); // update cursor
     }
     else {
-      this->cursor_ = 0; // go back to beginning at end of file
+      this->cursor_ = 0; // go back to beginning of file
     }
     
     f.close();

@@ -143,7 +143,7 @@ class AddressableScriptEffect : public AddressableLightEffect {
   void set_frame_interval(uint32_t frame_interval);
   void set_script_file(char* filename);
  protected:
-  bool read_next_frame_(byte frame[][3], int32_t num_pixels);
+  bool read_next_frame_(uint32_t frame[], int32_t num_pixels);
   char script_file_[16];
   uint32_t frame_interval_{100};
   uint32_t last_frame_time_{0};
